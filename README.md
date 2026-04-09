@@ -40,7 +40,7 @@ SSLGuard is a web-based security tool built using Python (Flask) and JavaScript 
 * Check risk level based on security findings
 * Download reports for further analysis
 
-## 📌 Project Highlights
+## Project Highlights
 
 * Built a practical SSL/TLS auditing tool for real-world security checks
 * Identifies common misconfigurations in web security
