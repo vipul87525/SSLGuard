@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HackShield — Network Threat Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ══════════════════════════════════════
+   TOKENS
+══════════════════════════════════════ */
+:root{
+  --c:    #00ffe5;
+  --c2:   #00ccb8;
+  --c3:   #008878;
+  --c4:   #003d35;
+  --red:  #ff4040;
+  --yel:  #ffd040;
+  --grn:  #00ff88;
+  --blu:  #4488ff;
+  --pur:  #9b59ff;
+  --txt:  #d8eef5;
+  --txt2: #7ab8cc;
+  --txt3: #3a7080;
+  --bdr:  #0f2535;
+  --bdr2: #1a3a50;
+  --glow: 0 0 28px #00ffe540;
+  --glowr:0 0 28px #ff404044;
+  --glowg:0 0 28px #00ff8844;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+
+/* ══════════════════════════════════════
+   BODY — DEEP CYBER BACKGROUND
+══════════════════════════════════════ */
+body{
+  color:var(--txt);
+  font-family:'Exo 2',sans-serif;
+  font-weight:400;
+  font-size:16px;
+  min-height:100vh;
+  overflow-x:hidden;
+  background:
+    /* Glowing orbs */
+    radial-gradient(ellipse 80% 60% at 10% 0%,   #0a2a4a 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 90% 100%,  #0a1f3a 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 50%,   #041825 0%, transparent 70%),
+    /* Deep base */
+    linear-gradient(160deg, #030d18 0%, #050f1e 40%, #020a14 70%, #040c1a 100%);
+  background-attachment: fixed;
+}
+
+/* ── Animated aurora top glow ── */
+body::before{
+  content:'';
+  position:fixed;top:0;left:0;right:0;height:320px;
+  background:
+    radial-gradient(ellipse 70% 100% at 30% -20%, #00ffe520 0%, transparent 60%),
+    radial-gradient(ellipse 50% 80% at 80% -10%, #4488ff18 0%, transparent 60%);
+  pointer-events:none;z-index:0;
+  animation:auroraShift 10s ease-in-out infinite alternate;
+}
+@keyframes auroraShift{
+  0%  {opacity:.6; transform:scaleX(1)   translateX(0);}
+  100%{opacity:1;  transform:scaleX(1.1) translateX(-3%);}
+}
+
+/* ── Bottom aurora ── */
+body::after{
+  content:'';
+  position:fixed;bottom:0;left:0;right:0;height:240px;
+  background:radial-gradient(ellipse 60% 100% at 70% 110%, #9b59ff14 0%, transparent 60%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── Canvas layers ── */
+#cvs-grid{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+#cvs-particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+#cvs-matrix{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.05;}
+
+/* ── Scanlines ── */
+.scanlines{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.03) 3px,rgba(0,0,0,.03) 4px);
+}
+
+/* ══════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════ */
+.wrap{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:32px 24px 120px;}
+
+/* ══════════════════════════════════════
+   PAGE REVEAL ANIMATIONS
+══════════════════════════════════════ */
+.reveal{opacity:0;transform:translateY(22px);animation:revUp .7s ease forwards;}
+.reveal.d1{animation-delay:.08s;}
+.reveal.d2{animation-delay:.22s;}
+.reveal.d3{animation-delay:.36s;}
+.reveal.d4{animation-delay:.50s;}
+.reveal.d5{animation-delay:.64s;}
+@keyframes revUp{to{opacity:1;transform:none;}}
+
+/* ══════════════════════════════════════
+   HEADER
+══════════════════════════════════════ */
+.hdr{
+  text-align:center;padding:60px 0 44px;
+  border-bottom:1px solid var(--bdr2);
+  margin-bottom:40px;position:relative;
+}
+/* Glowing accent line top */
+.hdr::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  height:1px;background:linear-gradient(90deg,transparent,var(--c),transparent);
+  animation:accentLine 3s ease-in-out infinite;
+}
+@keyframes accentLine{
+  0%,100%{width:180px;opacity:.4;}
+  50%{width:520px;opacity:1;}
+}
+
+.logo-row{display:flex;align-items:center;justify-content:center;gap:22px;margin-bottom:14px;}
+
+/* ── Animated Shield ── */
+.shield{
+  width:72px;height:72px;
+  border:2px solid var(--c);border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+  box-shadow:var(--glow),inset 0 0 40px #00ffe50a;
+  animation:shieldBeat 2.8s ease-in-out infinite;
+}
+.shield::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,#00ffe512 0%,transparent 60%);
+  animation:shieldPulse 2.8s ease-in-out infinite alternate;
+}
+/* Rotating ring around shield */
+.shield::after{
+  content:'';position:absolute;
+  inset:-8px;border-radius:20px;
+  border:1px solid transparent;
+  border-top-color:var(--c);
+  border-right-color:var(--c2);
+  opacity:.4;
+  animation:shieldRing 3s linear infinite;
+}
+@keyframes shieldBeat{
+  0%,100%{box-shadow:var(--glow),inset 0 0 40px #00ffe50a;}
+  50%{box-shadow:0 0 50px #00ffe565,0 0 100px #00ffe520,inset 0 0 50px #00ffe514;}
+}
+@keyframes shieldPulse{0%{opacity:.4;}100%{opacity:1;}}
+@keyframes shieldRing{to{transform:rotate(360deg);}}
+.shield svg{width:34px;height:34px;position:relative;z-index:1;filter:drop-shadow(0 0 10px var(--c));}
+
+/* ── Logo Title ── */
+.logo-title{
+  font-family:'Orbitron',monospace;
+  font-size:clamp(36px,6vw,58px);
+  font-weight:900;color:var(--c);
+  letter-spacing:8px;
+  text-shadow:0 0 40px #00ffe558,0 0 80px #00ffe522;
+  animation:titleFlicker 9s ease-in-out infinite;
+}
+.logo-title em{font-style:normal;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.25);}
+@keyframes titleFlicker{
+  0%,94%,100%{opacity:1;}
+  95%{opacity:.82;}97%{opacity:1;}98%{opacity:.88;}
+}
+
+/* ── Tagline ── */
+.tagline{
+  font-family:'JetBrains Mono',monospace;
+  font-size:14px;color:var(--txt3);
+  letter-spacing:3px;margin-top:10px;
+  animation:typeIn 2.2s steps(60,end) 1s both;
+}
+@keyframes typeIn{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+
+/* ── Status strip ── */
+.statusbar{display:flex;align-items:center;justify-content:center;gap:32px;margin-top:24px;flex-wrap:wrap;}
+.sitem{display:flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--txt3);}
+.sdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;position:relative;}
+.sdot::after{content:'';position:absolute;inset:-4px;border-radius:50%;animation:dotRing 2s ease-out infinite;}
+.sdot.on{background:var(--grn);box-shadow:0 0 12px var(--grn);}
+.sdot.on::after{border:1px solid var(--grn);}
+.sdot.yl{background:var(--yel);box-shadow:0 0 12px var(--yel);}
+.sdot.yl::after{border:1px solid var(--yel);}
+.sdot.rd{background:var(--red);box-shadow:0 0 12px var(--red);}
+.sdot.rd::after{border:1px solid var(--red);}
+@keyframes dotRing{0%{transform:scale(1);opacity:.8;}100%{transform:scale(2.8);opacity:0;}}
+
+/* ══════════════════════════════════════
+   NAV TABS
+══════════════════════════════════════ */
+.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:36px;}
+@media(max-width:620px){.nav{grid-template-columns:repeat(2,1fr);}}
+.ntab{
+  padding:18px 10px;
+  background:rgba(5,15,30,.7);
+  border:1px solid var(--bdr);border-radius:14px;
+  color:var(--txt3);
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;letter-spacing:2px;
+  cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  position:relative;overflow:hidden;
+  backdrop-filter:blur(8px);
+}
+.ntab::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--c),transparent);
+  transform:scaleX(0);transition:transform .3s;
+}
+.ntab:hover{color:var(--txt);border-color:var(--bdr2);transform:translateY(-3px);}
+.ntab.active{
+  color:var(--c);
+  background:rgba(0,255,229,.05);
+  border-color:var(--c3);
+  box-shadow:var(--glow),inset 0 0 30px #00ffe50a;
+  transform:translateY(-3px);
+}
+.ntab.active::after{transform:scaleX(1);}
+.ntab-icon{font-size:24px;line-height:1;}
+.ntab-lbl{font-size:10px;letter-spacing:2.5px;text-align:center;}
+
+/* ══════════════════════════════════════
+   PANELS
+══════════════════════════════════════ */
+.panel{display:none;animation:panIn .4s cubic-bezier(.4,0,.2,1);}
+.panel.active{display:block;}
+@keyframes panIn{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+
+/* ══════════════════════════════════════
+   CARDS
+══════════════════════════════════════ */
+.card{
+  background:rgba(5,14,26,.78);
+  border:1px solid var(--bdr);border-radius:16px;
+  padding:28px;margin-bottom:22px;
+  position:relative;overflow:hidden;
+  backdrop-filter:blur(14px);
+  transition:border-color .3s,box-shadow .3s;
+}
+.card:hover{border-color:var(--bdr2);}
+/* Top shimmer */
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--c2),var(--c),var(--c2),transparent);
+  background-size:200% 100%;opacity:.3;
+  animation:shimmerLine 5s linear infinite;
+}
+@keyframes shimmerLine{0%{background-position:200%;}100%{background-position:-200%;}}
+/* Corner brackets */
+.card .c-tl,.card .c-tr,.card .c-bl,.card .c-br{
+  position:absolute;width:18px;height:18px;
+  border-color:var(--c3);border-style:solid;opacity:.5;transition:opacity .3s;
+}
+.card:hover .c-tl,.card:hover .c-tr,.card:hover .c-bl,.card:hover .c-br{opacity:1;}
+.card .c-tl{top:9px;left:9px;border-width:1px 0 0 1px;}
+.card .c-tr{top:9px;right:9px;border-width:1px 1px 0 0;}
+.card .c-bl{bottom:9px;left:9px;border-width:0 0 1px 1px;}
+.card .c-br{bottom:9px;right:9px;border-width:0 1px 1px 0;}
+
+.card-title{
+  font-family:'Orbitron',monospace;font-size:13px;letter-spacing:3px;
+  color:var(--c);margin-bottom:24px;
+  display:flex;align-items:center;gap:12px;
+}
+.card-title svg{width:16px;height:16px;flex-shrink:0;}
+.slbl{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  letter-spacing:2.5px;color:var(--txt3);
+  margin-bottom:12px;display:flex;align-items:center;gap:12px;
+}
+.slbl::after{content:'';flex:1;height:1px;background:var(--bdr2);}
+
+/* ══════════════════════════════════════
+   INPUTS & BUTTONS
+══════════════════════════════════════ */
+.irow{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.inp{
+  flex:1;min-width:200px;
+  background:rgba(0,255,229,.04);
+  border:1px solid var(--bdr2);border-radius:10px;
+  padding:14px 18px;
+  color:var(--c);
+  font-family:'JetBrains Mono',monospace;font-size:14px;
+  outline:none;caret-color:var(--c);
+  transition:border-color .25s,box-shadow .25s;
+}
+.inp::placeholder{color:var(--txt3);}
+.inp:focus{
+  border-color:var(--c3);
+  box-shadow:0 0 0 3px #00ffe514,inset 0 0 20px #00ffe506;
+}
+.btn{
+  padding:14px 26px;
+  background:linear-gradient(135deg,#00ffe516,#00ccb80c);
+  border:1px solid var(--c3);border-radius:10px;
+  color:var(--c);
+  font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:1.5px;
+  cursor:pointer;position:relative;overflow:hidden;
+  transition:all .25s cubic-bezier(.4,0,.2,1);white-space:nowrap;
+}
+.btn::before{
+  content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,#00ffe51a,transparent);
+  transition:left .5s;
+}
+.btn:hover{background:#00ffe522;border-color:var(--c);box-shadow:var(--glow);transform:translateY(-2px);}
+.btn:hover::before{left:100%;}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.btn.red{border-color:#ff404060;color:var(--red);background:#ff404010;}
+.btn.red:hover{background:#ff404022;box-shadow:var(--glowr);}
+.btn.sm{padding:10px 18px;font-size:12px;}
+
+/* ══════════════════════════════════════
+   PROGRESS BAR
+══════════════════════════════════════ */
+.pbar{margin-bottom:18px;display:none;}
+.ptrack{height:4px;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden;margin-bottom:10px;}
+.pfill{
+  height:100%;width:0%;border-radius:4px;
+  background:linear-gradient(90deg,var(--c3),var(--c));
+  transition:width .4s ease;
+  box-shadow:0 0 14px var(--c2);position:relative;
+}
+.pfill::after{
+  content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);
+  width:8px;height:8px;border-radius:50%;
+  background:var(--c);box-shadow:0 0 12px var(--c);
+  animation:dotblink .6s ease-in-out infinite alternate;
+}
+@keyframes dotblink{from{opacity:.5;}to{opacity:1;}}
+.plog{
+  font-family:'JetBrains Mono',monospace;font-size:13px;
+  color:var(--c2);letter-spacing:.5px;min-height:18px;
+}
+.plog.err{color:var(--red);}
+
+/* ══════════════════════════════════════
+   STATS GRID
+══════════════════════════════════════ */
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+@media(max-width:620px){.sgrid{grid-template-columns:repeat(2,1fr);}}
+.scard{
+  background:rgba(0,255,229,.03);
+  border:1px solid var(--bdr);border-radius:14px;
+  padding:20px 14px;text-align:center;
+  transition:all .3s;position:relative;overflow:hidden;
+  backdrop-filter:blur(8px);
+}
+.scard::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:var(--c3);opacity:0;transition:opacity .3s;
+}
+.scard:hover{border-color:var(--c3);transform:translateY(-4px);box-shadow:0 12px 30px #00000050;}
+.scard:hover::after{opacity:1;}
+.sval{
+  font-family:'Orbitron',monospace;font-size:36px;font-weight:700;
+  color:var(--c);line-height:1.1;
+  animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{from{transform:scale(.6);opacity:0;}to{transform:scale(1);opacity:1;}}
+.sval.r{color:var(--red);text-shadow:0 0 22px #ff404055;}
+.sval.y{color:var(--yel);text-shadow:0 0 22px #ffd04055;}
+.sval.g{color:var(--grn);text-shadow:0 0 22px #00ff8855;}
+.slvl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);letter-spacing:2.5px;margin-top:6px;}
+
+/* ══════════════════════════════════════
+   INFO GRID
+══════════════════════════════════════ */
+.igrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+@media(max-width:620px){.igrid{grid-template-columns:repeat(2,1fr);}}
+.icell{
+  background:rgba(0,0,0,.25);border:1px solid var(--bdr);
+  border-radius:10px;padding:14px 16px;transition:border-color .25s;
+}
+.icell:hover{border-color:var(--bdr2);}
+.ilbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);letter-spacing:2.5px;margin-bottom:6px;}
+.ival{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--txt);word-break:break-all;line-height:1.5;}
+.ival.c{color:var(--c);}
+.ival.g{color:var(--grn);}
+.ival.r{color:var(--red);}
+
+/* ══════════════════════════════════════
+   PORT TABLE
+══════════════════════════════════════ */
+.twrap{overflow-x:auto;border-radius:12px;border:1px solid var(--bdr);}
+table{width:100%;border-collapse:collapse;}
+thead th{
+  padding:13px 16px;text-align:left;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;
+  color:var(--txt3);border-bottom:1px solid var(--bdr2);
+  background:rgba(0,0,0,.35);white-space:nowrap;
+}
+tbody tr{border-bottom:1px solid var(--bdr);transition:background .15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(0,255,229,.03);}
+td{padding:14px 16px;vertical-align:middle;}
+.portnum{font-family:'Orbitron',monospace;font-size:16px;font-weight:700;color:var(--c);}
+.svcname{font-family:'Exo 2',sans-serif;font-weight:700;font-size:16px;color:var(--txt);}
+.dsctxt{font-family:'Exo 2',sans-serif;font-size:13px;color:var(--txt3);margin-top:4px;line-height:1.5;}
+.cve{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  padding:4px 9px;border-radius:5px;
+  background:#ff404012;color:#ff9090;border:1px solid #ff404030;white-space:nowrap;
+}
+.rbadge{
+  padding:5px 12px;border-radius:6px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  letter-spacing:2px;white-space:nowrap;
+}
+.rh{background:#ff404015;color:var(--red);border:1px solid #ff404045;}
+.rm{background:#ffd04015;color:var(--yel);border:1px solid #ffd04045;}
+.rl{background:#00ff8815;color:var(--grn);border:1px solid #00ff8845;}
+.ru{background:rgba(255,255,255,.04);color:var(--txt3);border:1px solid var(--bdr);}
+.odot{
+  display:inline-block;width:9px;height:9px;
+  background:var(--grn);border-radius:50%;
+  box-shadow:0 0 10px var(--grn);
+  animation:blink 2s ease-in-out infinite;
+  margin-right:7px;vertical-align:middle;
+}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.banner-txt{
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);
+  background:rgba(0,0,0,.4);border:1px solid var(--bdr);border-radius:5px;
+  padding:4px 9px;margin-top:5px;max-width:240px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.arow{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;}
+
+/* ══════════════════════════════════════
+   PASSWORD PANEL
+══════════════════════════════════════ */
+.mtrack{height:10px;background:rgba(255,255,255,.05);border-radius:8px;overflow:hidden;margin-bottom:16px;}
+.mfill{
+  height:100%;width:0%;border-radius:8px;
+  transition:width .5s cubic-bezier(.4,0,.2,1),background .4s;
+  position:relative;overflow:hidden;
+}
+.mfill::after{
+  content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);
+  background-size:200%;animation:mshine 2s linear infinite;
+}
+@keyframes mshine{0%{background-position:200%;}100%{background-position:-200%;}}
+.slbl-str{
+  font-family:'Orbitron',monospace;font-size:18px;letter-spacing:4px;
+  min-height:26px;transition:color .3s;margin-bottom:20px;
+}
+.chk-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0;}
+.chk{
+  display:flex;align-items:center;gap:12px;
+  font-family:'Exo 2',sans-serif;font-size:15px;font-weight:500;
+  color:var(--txt3);padding:10px 16px;
+  background:rgba(0,0,0,.2);border:1px solid var(--bdr);border-radius:10px;
+  transition:all .25s;
+}
+.chk.ok{color:var(--grn);border-color:#00ff8830;background:rgba(0,255,136,.04);}
+.chkdot{
+  width:22px;height:22px;border-radius:50%;
+  border:1.5px solid var(--bdr2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;flex-shrink:0;transition:all .3s;color:transparent;
+}
+.chk.ok .chkdot{
+  background:var(--grn);border-color:var(--grn);color:#000;
+  box-shadow:0 0 12px #00ff8855;
+  animation:chkBounce .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes chkBounce{from{transform:scale(0);}to{transform:scale(1);}}
+.epills{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+.epill{
+  background:rgba(0,0,0,.25);border:1px solid var(--bdr2);
+  border-radius:8px;padding:8px 18px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--txt2);
+}
+.epill span{color:var(--c);font-weight:700;}
+.audit-wrap{margin:10px 0 18px;text-align:center;}
+.pbox{
+  margin-top:16px;padding:18px 22px;border-radius:12px;
+  font-family:'Exo 2',sans-serif;font-size:15px;font-weight:500;
+  display:none;animation:panIn .3s ease;line-height:1.7;
+}
+.pbox.danger{background:rgba(255,64,64,.08);border:1px solid rgba(255,64,64,.35);color:#ff9090;}
+.pbox.safe{background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.35);color:var(--grn);}
+.pbox.warn{background:rgba(255,208,64,.08);border:1px solid rgba(255,208,64,.35);color:var(--yel);}
+.ctbl{width:100%;border-collapse:collapse;margin-top:16px;}
+.ctbl th{
+  text-align:left;padding:10px 16px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;
+  color:var(--txt3);border-bottom:1px solid var(--bdr);
+}
+.ctbl td{padding:11px 16px;border-bottom:1px solid var(--bdr);font-family:'Exo 2',sans-serif;font-size:15px;}
+.ctbl tr:last-child td{border-bottom:none;}
+.cspd{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt3);}
+.ct-i{color:var(--red);font-family:'JetBrains Mono',monospace;font-size:13px;}
+.ct-f{color:var(--yel);font-family:'JetBrains Mono',monospace;font-size:13px;}
+.ct-s{color:var(--grn);font-family:'JetBrains Mono',monospace;font-size:13px;}
+
+/* ══════════════════════════════════════
+   SSL PANEL
+══════════════════════════════════════ */
+.grade-wrap{text-align:center;padding:30px 0 18px;}
+.grade-ltr{
+  font-family:'Orbitron',monospace;font-size:110px;font-weight:900;line-height:1;
+  display:block;transition:all .5s cubic-bezier(.34,1.56,.64,1);
+  animation:gradeIn .6s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes gradeIn{from{transform:scale(.4) rotateY(90deg);opacity:0;}to{transform:scale(1) rotateY(0);opacity:1;}}
+.grade-sub{font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:3px;color:var(--txt3);margin-top:10px;}
+.issue-row{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 0;border-bottom:1px solid var(--bdr);
+  font-family:'Exo 2',sans-serif;font-size:15px;font-weight:500;
+}
+.issue-row:last-child{border-bottom:none;}
+.san-wrap{display:flex;flex-wrap:wrap;gap:10px;}
+.san-tag{
+  background:rgba(0,0,0,.25);border:1px solid var(--bdr2);
+  border-radius:7px;padding:6px 14px;
+  font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt2);
+  transition:border-color .2s;
+}
+.san-tag:hover{border-color:var(--c3);}
+
+/* ══════════════════════════════════════
+   HISTORY
+══════════════════════════════════════ */
+.hitem{
+  display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  padding:15px 18px;border-bottom:1px solid var(--bdr);
+  transition:background .15s;
+  animation:histIn .35s ease;
+}
+@keyframes histIn{from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:none;}}
+.hitem:last-child{border-bottom:none;}
+.hitem:hover{background:rgba(0,255,229,.03);}
+.hnum{font-family:'Orbitron',monospace;font-size:13px;color:var(--txt3);min-width:32px;}
+.htime{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt3);white-space:nowrap;}
+.hip{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--c);min-width:150px;}
+.hstats{font-family:'Exo 2',sans-serif;font-size:14px;font-weight:500;color:var(--txt2);}
+.hstats .r{color:var(--red);}
+.hstats .y{color:var(--yel);}
+.htype{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:5px;letter-spacing:1px;}
+.htype.p{background:rgba(0,255,229,.1);color:var(--c);border:1px solid var(--c3);}
+.htype.s{background:rgba(68,136,255,.1);color:#80b4ff;border:1px solid rgba(68,136,255,.4);}
+.empty{
+  text-align:center;padding:60px 20px;
+  color:var(--txt3);font-family:'JetBrains Mono',monospace;font-size:13px;
+  letter-spacing:1.5px;line-height:2.5;
+}
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+.toast{
+  position:fixed;bottom:36px;right:30px;z-index:9999;
+  background:rgba(4,16,30,.9);
+  border:1px solid var(--c3);border-radius:14px;
+  padding:16px 24px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--c);
+  box-shadow:var(--glow),0 20px 50px #00000070;
+  backdrop-filter:blur(16px);
+  display:none;max-width:360px;
+  animation:toastIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+.toast.err{border-color:rgba(255,64,64,.5);color:var(--red);box-shadow:var(--glowr),0 20px 50px #00000070;}
+.toast.ok{border-color:rgba(0,255,136,.5);color:var(--grn);box-shadow:var(--glowg),0 20px 50px #00000070;}
+@keyframes toastIn{from{transform:translateX(28px) scale(.88);opacity:0;}to{transform:none;opacity:1;}}
+
+/* ══════════════════════════════════════
+   SCROLLBAR
+══════════════════════════════════════ */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--txt3);border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:var(--c3);}
+
+/* ══════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════ */
+@media(max-width:520px){
+  .igrid{grid-template-columns:1fr 1fr;}
+  .irow{flex-direction:column;}
+  .btn{width:100%;}
+  .chk-grid{grid-template-columns:1fr;}
+  .logo-title{letter-spacing:4px;}
+  .sgrid{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Background Canvas Layers ── -->
+<canvas id="cvs-grid"></canvas>
+<canvas id="cvs-particles"></canvas>
+<canvas id="cvs-matrix"></canvas>
+<div class="scanlines"></div>
+
+<div class="wrap">
+
+  <!-- ══ HEADER ══ -->
+  <header class="hdr">
+    <div class="logo-row reveal d1">
+      <div class="shield">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00ffe5" stroke-width="2.2">
+          <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z"/>
+          <polyline points="9,12 11,14 15,10" stroke-width="2.4"/>
+        </svg>
+      </div>
+      <h1 class="logo-title">HACK<em>SHIELD</em></h1>
+    </div>
+    <p class="tagline reveal d2">// NETWORK THREAT ANALYZER &amp; SECURITY AUDITOR — v2.0 //</p>
+    <div class="statusbar reveal d3">
+      <div class="sitem"><div class="sdot on"></div><span>SYSTEM ONLINE</span></div>
+      <div class="sitem"><div class="sdot yl"></div><span id="clock">00:00:00</span></div>
+      <div class="sitem">
+        <div class="sdot yl" id="be-dot"></div>
+        <span>BACKEND: <span id="be-txt" style="color:var(--yel)">CHECKING...</span></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══ NAV ══ -->
+  <nav class="nav reveal d4">
+    <button class="ntab active" onclick="sw('scanner')">
+      <span class="ntab-icon">🌐</span>
+      <span class="ntab-lbl">PORT SCANNER</span>
+    </button>
+    <button class="ntab" onclick="sw('password')">
+      <span class="ntab-icon">🔑</span>
+      <span class="ntab-lbl">PASSWORD AUDIT</span>
+    </button>
+    <button class="ntab" onclick="sw('ssl')">
+      <span class="ntab-icon">🔒</span>
+      <span class="ntab-lbl">SSL CHECKER</span>
+    </button>
+    <button class="ntab" onclick="sw('history')">
+      <span class="ntab-icon">📋</span>
+      <span class="ntab-lbl">HISTORY</span>
+    </button>
+  </nav>
+
+  <!-- ══════════════════════════
+       PANEL 1 — PORT SCANNER
+  ══════════════════════════ -->
+  <div id="tab-scanner" class="panel active reveal d5">
+    <div class="card">
+      <div class="c-tl"></div><div class="c-tr"></div>
+      <div class="c-bl"></div><div class="c-br"></div>
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/>
+        </svg>
+        TCP PORT SCANNER
+      </div>
+      <div class="slbl">TARGET HOST</div>
+      <div class="irow">
+        <input class="inp" id="ip-in" placeholder="Enter IP or domain — e.g. 192.168.1.1 or example.com" autocomplete="off"/>
+        <button class="btn" id="scan-btn" onclick="startScan()">▶ START SCAN</button>
+        <button class="btn red sm" onclick="clearScan()">✕ CLEAR</button>
+      </div>
+      <div class="pbar" id="s-pb">
+        <div class="ptrack"><div class="pfill" id="s-fill"></div></div>
+        <div class="plog" id="s-log">> Waiting for target...</div>
+      </div>
+    </div>
+
+    <div id="scan-res" style="display:none">
+      <div class="sgrid">
+        <div class="scard"><div class="sval" id="s-tot">0</div><div class="slvl">OPEN PORTS</div></div>
+        <div class="scard"><div class="sval r" id="s-hi">0</div><div class="slvl">HIGH RISK</div></div>
+        <div class="scard"><div class="sval y" id="s-me">0</div><div class="slvl">MEDIUM RISK</div></div>
+        <div class="scard"><div class="sval g" id="s-du">—</div><div class="slvl">SCAN TIME</div></div>
+      </div>
+
+      <div class="card">
+        <div class="c-tl"></div><div class="c-tr"></div>
+        <div class="card-title">📍 TARGET INTELLIGENCE</div>
+        <div class="igrid">
+          <div class="icell"><div class="ilbl">IP ADDRESS</div><div class="ival c" id="g-ip">—</div></div>
+          <div class="icell"><div class="ilbl">HOSTNAME</div><div class="ival" id="g-ho">—</div></div>
+          <div class="icell"><div class="ilbl">NETWORK TYPE</div><div class="ival" id="g-nt">—</div></div>
+          <div class="icell"><div class="ilbl">LOCATION</div><div class="ival" id="g-ci">—</div></div>
+          <div class="icell"><div class="ilbl">COUNTRY</div><div class="ival" id="g-co">—</div></div>
+          <div class="icell"><div class="ilbl">ISP / ORG</div><div class="ival" id="g-or">—</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="c-tl"></div><div class="c-tr"></div>
+        <div class="card-title">🔍 OPEN PORTS &amp; VULNERABILITIES</div>
+        <div class="twrap">
+          <table>
+            <thead>
+              <tr>
+                <th>STATUS</th><th>PORT</th><th>SERVICE</th>
+                <th>RISK</th><th>CVE</th><th>DESCRIPTION</th>
+              </tr>
+            </thead>
+            <tbody id="p-body"></tbody>
+          </table>
+        </div>
+        <div class="arow">
+          <button class="btn" onclick="dlTxt()">⬇ DOWNLOAD .TXT</button>
+          <button class="btn" onclick="dlJson()">⬇ DOWNLOAD JSON</button>
+          <button class="btn" onclick="copyR()">⎘ COPY REPORT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════
+       PANEL 2 — PASSWORD AUDIT
+  ══════════════════════════ -->
+  <div id="tab-password" class="panel">
+    <div class="card">
+      <div class="c-tl"></div><div class="c-tr"></div>
+      <div class="c-bl"></div><div class="c-br"></div>
+      <div class="card-title">🔑 PASSWORD SECURITY AUDIT</div>
+      <div class="slbl">ENTER PASSWORD</div>
+      <div class="irow">
+        <input class="inp" id="pw-in" type="password"
+               placeholder="Type your password to analyze in real-time..."
+               oninput="analyzePw()" autocomplete="off"/>
+        <button class="btn sm" id="pw-eye" onclick="toggleEye()">👁 SHOW</button>
+      </div>
+      <div class="mtrack"><div class="mfill" id="pw-bar"></div></div>
+      <div class="slbl-str" id="pw-lbl" style="color:var(--txt3)">— AWAITING INPUT —</div>
+      <div class="slbl">SECURITY REQUIREMENTS</div>
+      <div class="chk-grid">
+        <div class="chk" id="c-len"><div class="chkdot">✓</div>Min 8 characters</div>
+        <div class="chk" id="c-up"><div class="chkdot">✓</div>Uppercase letter (A–Z)</div>
+        <div class="chk" id="c-low"><div class="chkdot">✓</div>Lowercase letter (a–z)</div>
+        <div class="chk" id="c-num"><div class="chkdot">✓</div>Number (0–9)</div>
+        <div class="chk" id="c-sym"><div class="chkdot">✓</div>Special symbol (!@#$...)</div>
+        <div class="chk" id="c-long"><div class="chkdot">✓</div>12+ characters (recommended)</div>
+      </div>
+      <div class="slbl">METRICS</div>
+      <div class="epills" id="epills" style="display:none">
+        <div class="epill">Entropy: <span id="e-en">0</span> bits</div>
+        <div class="epill">Length: <span id="e-le">0</span> chars</div>
+        <div class="epill">Score: <span id="e-sc">0/7</span></div>
+        <div class="epill">Charset size: <span id="e-cs">0</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="c-tl"></div><div class="c-tr"></div>
+      <div class="audit-wrap">
+        <button class="btn" style="padding:16px 40px;font-size:15px;letter-spacing:2px;" onclick="fullAudit()">
+          🔍 RUN FULL AUDIT — Breach Check + Crack Time Analysis
+        </button>
+      </div>
+      <p style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt3);letter-spacing:1px;">
+        Uses k-anonymity — your password is NEVER fully sent to any server
+      </p>
+      <div id="pb-danger" class="pbox danger">⚠ PASSWORD COMPROMISED — Found in <strong id="p-count">0</strong> known data breach records.<br>Stop using this password everywhere immediately.</div>
+      <div id="pb-safe"   class="pbox safe">✓ SAFE — Not found in any known breach database (checked via HaveIBeenPwned).</div>
+      <div id="pb-warn"   class="pbox warn">⚡ Breach API unavailable — could not verify. Check your internet connection.</div>
+    </div>
+
+    <div class="card" id="crack-card" style="display:none">
+      <div class="c-tl"></div><div class="c-tr"></div>
+      <div class="card-title">⏱ ESTIMATED CRACK TIME BY ATTACK TYPE</div>
+      <table class="ctbl">
+        <thead><tr><th>ATTACK SCENARIO</th><th>SPEED</th><th>ESTIMATED TIME</th></tr></thead>
+        <tbody id="cr-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════
+       PANEL 3 — SSL CHECKER
+  ══════════════════════════ -->
+  <div id="tab-ssl" class="panel">
+    <div class="card">
+      <div class="c-tl"></div><div class="c-tr"></div>
+      <div class="c-bl"></div><div class="c-br"></div>
+      <div class="card-title">🔒 SSL / TLS CERTIFICATE CHECKER</div>
+      <div class="slbl">TARGET DOMAIN</div>
+      <div class="irow">
+        <input class="inp" id="ssl-in" placeholder="Enter domain — e.g. google.com or https://example.com"/>
+        <button class="btn" id="ssl-btn" onclick="checkSSL()">🔍 CHECK SSL</button>
+        <button class="btn red sm" onclick="clearSSL()">✕ CLEAR</button>
+      </div>
+      <div class="pbar" id="ssl-pb">
+        <div class="ptrack"><div class="pfill" id="ssl-fill"></div></div>
+        <div class="plog" id="ssl-log">> Waiting for domain...</div>
+      </div>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt3);letter-spacing:.5px;margin-top:8px;">
+        Try: google.com &nbsp;·&nbsp; github.com &nbsp;·&nbsp; expired.badssl.com (expired test)
+      </p>
+    </div>
+
+    <div id="ssl-res" style="display:none">
+      <div class="card" style="text-align:center">
+        <div class="c-tl"></div><div class="c-tr"></div>
+        <div class="card-title" style="justify-content:center">📊 SECURITY GRADE</div>
+        <div class="grade-wrap">
+          <span class="grade-ltr" id="ssl-grade">—</span>
+          <div class="grade-sub" id="ssl-glbl">ANALYZING...</div>
+        </div>
+      </div>
+      <div class="sgrid">
+        <div class="scard"><div class="sval" id="ssl-days">—</div><div class="slvl">DAYS LEFT</div></div>
+        <div class="scard"><div class="sval" id="ssl-bits">—</div><div class="slvl">CIPHER BITS</div></div>
+        <div class="scard"><div class="sval" id="ssl-sans">—</div><div class="slvl">SAN COUNT</div></div>
+        <div class="scard"><div class="sval" id="ssl-stv">—</div><div class="slvl">STATUS</div></div>
+      </div>
+      <div class="card">
+        <div class="c-tl"></div><div class="c-tr"></div>
+        <div class="card-title">📄 CERTIFICATE DETAILS</div>
+        <div class="igrid">
+          <div class="icell"><div class="ilbl">ISSUED TO</div><div class="ival" id="ssl-to">—</div></div>
+          <div class="icell"><div class="ilbl">ISSUED BY</div><div class="ival" id="ssl-by">—</div></div>
+          <div class="icell"><div class="ilbl">VALID FROM</div><div class="ival" id="ssl-fr">—</div></div>
+          <div class="icell"><div class="ilbl">VALID UNTIL</div><div class="ival" id="ssl-un">—</div></div>
+          <div class="icell"><div class="ilbl">TLS VERSION</div><div class="ival" id="ssl-tl">—</div></div>
+          <div class="icell"><div class="ilbl">CIPHER SUITE</div><div class="ival" id="ssl-ci">—</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="c-tl"></div><div class="c-tr"></div>
+        <div class="card-title">🌐 SUBJECT ALTERNATIVE NAMES</div>
+        <div class="san-wrap" id="ssl-san"></div>
+      </div>
+      <div class="card">
+        <div class="c-tl"></div><div class="c-tr"></div>
+        <div class="card-title">⚠ DETECTED SECURITY ISSUES</div>
+        <div id="ssl-iss"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════
+       PANEL 4 — HISTORY
+  ══════════════════════════ -->
+  <div id="tab-history" class="panel">
+    <div class="card">
+      <div class="c-tl"></div><div class="c-tr"></div>
+      <div class="card-title">📋 ACTIVITY HISTORY</div>
+      <div id="h-body">
+        <div class="empty">// NO ACTIVITY RECORDED YET //<br><br>Run a port scan or SSL check<br>to populate this log.</div>
+      </div>
+      <div class="arow" style="margin-top:20px">
+        <button class="btn red" onclick="clearHist()">🗑 CLEAR ALL HISTORY</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════
+   CONFIG
+════════════════════════════════════ */
+const API='http://localhost:5000/api';
+let hist=JSON.parse(localStorage.getItem('hs3')||'[]');
+let lastScan=null;
+const GC={A:'#00ffe5',B:'#00ff88',C:'#ffd040',F:'#ff4040'};
+const GL={A:'EXCELLENT — FULLY SECURE',B:'GOOD — MINOR ISSUES',C:'NEEDS IMPROVEMENT',F:'CRITICAL — ACT NOW'};
+
+/* ════════════════════════════════════
+   BACKGROUND 1 — ANIMATED HEX GRID
+════════════════════════════════════ */
+(function(){
+  const c=document.getElementById('cvs-grid');
+  const ctx=c.getContext('2d');
+  let W,H,hexes=[];
+  function resize(){
+    W=c.width=window.innerWidth;
+    H=c.height=window.innerHeight;
+    buildHexes();
+  }
+  function buildHexes(){
+    hexes=[];
+    const r=36,hx=r*2*0.866,hy=r*1.5;
+    for(let row=0;row*hy<H+r*2;row++){
+      for(let col=0;col*hx<W+hx;col++){
+        hexes.push({
+          x:col*hx+(row%2?hx/2:0),
+          y:row*hy,
+          r:r,
+          phase:Math.random()*Math.PI*2,
+          speed:0.003+Math.random()*0.004,
+          baseAlpha:0.012+Math.random()*0.018
+        });
+      }
+    }
+  }
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    t+=0.012;
+    hexes.forEach(h=>{
+      const a=h.baseAlpha+Math.sin(t*h.speed*80+h.phase)*0.01;
+      ctx.beginPath();
+      for(let i=0;i<6;i++){
+        const ang=Math.PI/180*(60*i-30);
+        const px=h.x+h.r*Math.cos(ang);
+        const py=h.y+h.r*Math.sin(ang);
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      ctx.closePath();
+      ctx.strokeStyle=`rgba(0,255,229,${a})`;
+      ctx.lineWidth=0.6;
+      ctx.stroke();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize();
+  window.addEventListener('resize',resize);
+  draw();
+})();
+
+/* ════════════════════════════════════
+   BACKGROUND 2 — NEURAL PARTICLES
+════════════════════════════════════ */
+(function(){
+  const c=document.getElementById('cvs-particles');
+  const ctx=c.getContext('2d');
+  let W,H,pts=[];
+  const N=70;
+  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;init();}
+  function init(){
+    pts=[];
+    for(let i=0;i<N;i++){
+      pts.push({
+        x:Math.random()*W, y:Math.random()*H,
+        vx:(Math.random()-.5)*.3, vy:(Math.random()-.5)*.3,
+        r:Math.random()*1.8+.8,
+        col:Math.random()>.8?'68,136,255':'0,255,229'
+      });
+    }
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    /* connections */
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<130){
+          ctx.beginPath();
+          ctx.strokeStyle=`rgba(0,255,229,${(1-d/130)*0.07})`;
+          ctx.lineWidth=.6;
+          ctx.moveTo(pts[i].x,pts[i].y);
+          ctx.lineTo(pts[j].x,pts[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    /* dots */
+    pts.forEach(p=>{
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.col},.55)`;
+      ctx.fill();
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+    });
+    requestAnimationFrame(draw);
+  }
+  resize();
+  window.addEventListener('resize',resize);
+  draw();
+})();
+
+/* ════════════════════════════════════
+   BACKGROUND 3 — MATRIX RAIN
+════════════════════════════════════ */
+(function(){
+  const c=document.getElementById('cvs-matrix');
+  const ctx=c.getContext('2d');
+  const CH='アイウエオカキクケコサシスセソ0123456789ABCDEF<>{}[]';
+  let drops=[];
+  function resize(){
+    c.width=window.innerWidth;c.height=window.innerHeight;
+    drops=Array(Math.floor(c.width/15)).fill(0);
+  }
+  resize();
+  window.addEventListener('resize',resize);
+  function draw(){
+    ctx.fillStyle='rgba(3,12,24,.07)';
+    ctx.fillRect(0,0,c.width,c.height);
+    for(let i=0;i<drops.length;i++){
+      const ch=CH[Math.floor(Math.random()*CH.length)];
+      const bright=Math.random()>.97;
+      ctx.globalAlpha=bright?.95:.4;
+      ctx.fillStyle=bright?'#ffffff':'#00ffe5';
+      ctx.font='13px "JetBrains Mono"';
+      ctx.fillText(ch,i*15,drops[i]*15);
+      ctx.globalAlpha=1;
+      if(drops[i]*15>c.height&&Math.random()>.975) drops[i]=0;
+      drops[i]++;
+    }
+  }
+  setInterval(draw,48);
+})();
+
+/* ════════════════════════════════════
+   CLOCK
+════════════════════════════════════ */
+setInterval(()=>{
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    [n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+},1000);
+
+/* ════════════════════════════════════
+   BACKEND CHECK
+════════════════════════════════════ */
+async function pingBE(){
+  const dot=document.getElementById('be-dot');
+  const txt=document.getElementById('be-txt');
+  try{
+    await fetch(`${API}/scan`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({target:'__ping__'}),signal:AbortSignal.timeout(3000)});
+    dot.className='sdot on';
+    txt.textContent='ONLINE';txt.style.color='var(--grn)';
+  }catch{
+    dot.className='sdot rd';
+    txt.textContent='OFFLINE — run app.py';txt.style.color='var(--red)';
+  }
+}
+pingBE();
+
+/* ════════════════════════════════════
+   TAB SWITCH
+════════════════════════════════════ */
+const TABS=['scanner','password','ssl','history'];
+function sw(name){
+  document.querySelectorAll('.ntab').forEach((b,i)=>b.classList.toggle('active',TABS[i]===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='history') renderHist();
+}
+
+/* ════════════════════════════════════
+   TOAST
+════════════════════════════════════ */
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast'+(type?' '+type:'');
+  el.style.display='block';
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>{el.style.display='none';},3200);
+}
+
+/* ════════════════════════════════════
+   PROGRESS HELPERS
+════════════════════════════════════ */
+function startPbar(pbId,fillId,logId,steps,ms=500){
+  document.getElementById(pbId).style.display='block';
+  document.getElementById(logId).className='plog';
+  let i=0;
+  const fill=document.getElementById(fillId);
+  const log=document.getElementById(logId);
+  const t=setInterval(()=>{
+    if(i<steps.length){log.textContent=steps[i];fill.style.width=((i+1)/steps.length*82)+'%';i++;}
+  },ms);
+  return t;
+}
+function donePbar(fillId,logId,msg,t){
+  clearInterval(t);
+  document.getElementById(fillId).style.width='100%';
+  document.getElementById(logId).textContent=msg;
+}
+function errPbar(logId,msg,t){
+  clearInterval(t);
+  const el=document.getElementById(logId);
+  el.textContent='✕ ERROR: '+msg;el.className='plog err';
+  document.getElementById(logId.replace('log','fill')).style.width='0%';
+}
+
+/* ════════════════════════════════════
+   PORT SCANNER
+════════════════════════════════════ */
+async function startScan(){
+  const target=document.getElementById('ip-in').value.trim();
+  if(!target){toast('⚠ Enter an IP address or domain','err');return;}
+  const btn=document.getElementById('scan-btn');
+  btn.disabled=true;btn.textContent='⏳ SCANNING...';
+  document.getElementById('scan-res').style.display='none';
+  const t=startPbar('s-pb','s-fill','s-log',[
+    '> Resolving hostname...',
+    '> Opening raw socket...',
+    '> Probing TCP stack...',
+    '> Scanning 25+ ports...',
+    '> Fingerprinting services...',
+    '> Matching CVE database...',
+    '> Building threat report...',
+  ]);
+  try{
+    const r=await fetch(`${API}/scan`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target})});
+    const d=await r.json();
+    if(d.error){errPbar('s-log',d.error,t);toast('✕ '+d.error,'err');return;}
+    donePbar('s-fill','s-log',`> Complete — ${d.stats.total} open ports found in ${d.duration}s`,t);
+    lastScan=d;renderScan(d);
+    hist.unshift({type:'port',time:new Date().toLocaleString(),target:d.target,ip:d.ip,
+      total:d.stats.total,high:d.stats.high,medium:d.stats.medium,low:d.stats.low,duration:d.duration});
+    saveHist();
+    toast(`✓ Scan complete — ${d.stats.total} open ports`,'ok');
+    const priv=d.ip.startsWith('192.168.')||d.ip.startsWith('10.')||d.ip==='127.0.0.1';
+    if(!priv) fetchGeo(d.ip);
+    else{document.getElementById('g-ci').textContent='Private Network';document.getElementById('g-co').textContent='Local / LAN';document.getElementById('g-or').textContent='Internal';}
+  }catch{
+    errPbar('s-log','Cannot connect to backend. Make sure app.py is running.',t);
+    toast('✕ Backend offline — start app.py','err');
+  }finally{btn.disabled=false;btn.textContent='▶ START SCAN';}
+}
+
+function renderScan(d){
+  document.getElementById('scan-res').style.display='block';
+  document.getElementById('s-tot').textContent=d.stats.total;
+  document.getElementById('s-hi').textContent=d.stats.high;
+  document.getElementById('s-me').textContent=d.stats.medium;
+  document.getElementById('s-du').textContent=d.duration+'s';
+  document.getElementById('g-ip').textContent=d.ip;
+  document.getElementById('g-ho').textContent=d.hostname;
+  document.getElementById('g-nt').textContent=d.network_type;
+  const tb=document.getElementById('p-body');tb.innerHTML='';
+  if(!d.open_ports.length){
+    tb.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:36px;color:var(--txt3);font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:1px;">// NO OPEN PORTS DETECTED //</td></tr>`;
+    return;
+  }
+  d.open_ports.forEach(p=>{
+    const rc=p.risk==='high'?'rh':p.risk==='medium'?'rm':p.risk==='low'?'rl':'ru';
+    const bn=p.banner?`<div class="banner-txt">${esc(p.banner)}</div>`:'';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><span class="odot"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--grn);letter-spacing:1px">OPEN</span></td>
+      <td><span class="portnum">${p.port}</span></td>
+      <td><div class="svcname">${p.service}</div>${bn}</td>
+      <td><span class="rbadge ${rc}">${p.risk.toUpperCase()}</span></td>
+      <td><span class="cve">${p.cve}</span></td>
+      <td><div class="dsctxt">${p.desc}</div></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function fetchGeo(ip){
+  try{
+    const r=await fetch(`${API}/geoip`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip})});
+    const d=await r.json();
+    if(!d.error){
+      document.getElementById('g-ci').textContent=`${d.city}, ${d.region}`;
+      document.getElementById('g-co').textContent=d.country;
+      document.getElementById('g-or').textContent=d.org||'—';
+    }
+  }catch{}
+}
+
+function clearScan(){
+  document.getElementById('scan-res').style.display='none';
+  document.getElementById('s-pb').style.display='none';
+  document.getElementById('ip-in').value='';
+  lastScan=null;
+}
+
+function buildRep(d){
+  let t=`HACKSHIELD SCAN REPORT\n${'='.repeat(56)}\nTarget  : ${d.target}\nIP      : ${d.ip}\nHost    : ${d.hostname}\nType    : ${d.network_type}\nDate    : ${new Date().toLocaleString()}\nDuration: ${d.duration}s\n\nSUMMARY: ${d.stats.total} open | ${d.stats.high} high | ${d.stats.medium} medium | ${d.stats.low} low\n\nOPEN PORTS\n${'-'.repeat(56)}\n`;
+  d.open_ports.forEach(p=>{t+=`Port ${p.port} / ${p.service} [${p.risk.toUpperCase()}] ${p.cve}\n  ${p.desc}\n`;if(p.banner)t+=`  Banner: ${p.banner}\n`;t+='\n';});
+  return t;
+}
+function dlTxt(){if(!lastScan){toast('⚠ No scan to download','err');return;}dl(new Blob([buildRep(lastScan)],{type:'text/plain'}),`hackshield_${lastScan.ip}.txt`);toast('✓ Downloaded','ok');}
+function dlJson(){if(!lastScan){toast('⚠ No scan to download','err');return;}dl(new Blob([JSON.stringify(lastScan,null,2)],{type:'application/json'}),`hackshield_${lastScan.ip}.json`);toast('✓ Downloaded','ok');}
+function copyR(){if(!lastScan){toast('⚠ No scan','err');return;}navigator.clipboard.writeText(buildRep(lastScan)).then(()=>toast('✓ Copied','ok'));}
+function dl(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();}
+
+/* ════════════════════════════════════
+   PASSWORD AUDIT
+════════════════════════════════════ */
+const PC=['#ff4040','#ff4040','#ff6a00','#ffd040','#ffd040','#00ff88','#00ffe5','#00ffe5'];
+const PN=['','Very Weak','Weak','Fair','Good','Strong','Very Strong','Excellent'];
+
+function analyzePw(){
+  const pw=document.getElementById('pw-in').value;
+  const tests=[pw.length>=8,/[A-Z]/.test(pw),/[a-z]/.test(pw),/[0-9]/.test(pw),/[^A-Za-z0-9]/.test(pw),pw.length>=12];
+  const ids=['c-len','c-up','c-low','c-num','c-sym','c-long'];
+  const lbls=['Min 8 characters','Uppercase letter (A–Z)','Lowercase letter (a–z)','Number (0–9)','Special symbol (!@#$...)','12+ characters (recommended)'];
+  ids.forEach((id,i)=>{
+    const el=document.getElementById(id);
+    el.classList.toggle('ok',tests[i]);
+    el.querySelector('.chkdot').textContent=tests[i]?'✓':'';
+    el.childNodes[1].textContent=' '+lbls[i];
+  });
+  let cs=0;
+  if(/[a-z]/.test(pw))cs+=26;if(/[A-Z]/.test(pw))cs+=26;if(/[0-9]/.test(pw))cs+=10;if(/[^A-Za-z0-9]/.test(pw))cs+=32;
+  const ent=cs&&pw?+(pw.length*Math.log2(cs)).toFixed(1):0;
+  const score=tests.filter(Boolean).length+(pw.length>=16?1:0);
+  const bar=document.getElementById('pw-bar');
+  const pct=pw?Math.min(100,Math.round(score/7*100)):0;
+  bar.style.width=pct+'%';
+  bar.style.background=PC[Math.min(score,7)];
+  bar.style.boxShadow=pw?`0 0 18px ${PC[Math.min(score,7)]}88`:'none';
+  const lbl=document.getElementById('pw-lbl');
+  lbl.textContent=pw?(PN[Math.min(score,7)]||'Excellent'):'— AWAITING INPUT —';
+  lbl.style.color=pw?PC[Math.min(score,7)]:'var(--txt3)';
+  document.getElementById('epills').style.display=pw?'flex':'none';
+  document.getElementById('e-en').textContent=ent;
+  document.getElementById('e-le').textContent=pw.length;
+  document.getElementById('e-sc').textContent=`${Math.min(score,7)}/7`;
+  document.getElementById('e-cs').textContent=cs;
+  document.getElementById('pb-danger').style.display='none';
+  document.getElementById('pb-safe').style.display='none';
+  document.getElementById('pb-warn').style.display='none';
+  document.getElementById('crack-card').style.display='none';
+}
+
+async function fullAudit(){
+  const pw=document.getElementById('pw-in').value;
+  if(!pw){toast('⚠ Enter a password first','err');return;}
+  const btn=event.target;btn.disabled=true;btn.textContent='⏳ AUDITING...';
+  try{
+    const r=await fetch(`${API}/password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const d=await r.json();
+    if(d.error){toast('✕ '+d.error,'err');return;}
+    ['pb-danger','pb-safe','pb-warn'].forEach(id=>document.getElementById(id).style.display='none');
+    if(d.pwned>0){document.getElementById('p-count').textContent=d.pwned.toLocaleString();document.getElementById('pb-danger').style.display='block';}
+    else if(d.pwned===0){document.getElementById('pb-safe').style.display='block';}
+    else{document.getElementById('pb-warn').style.display='block';}
+    document.getElementById('crack-card').style.display='block';
+    document.getElementById('cr-body').innerHTML=[
+      ['Online — throttled','~100/sec',d.crack_times.online_throttled],
+      ['Online — unthrottled','~10,000/sec',d.crack_times.online_unthrottled],
+      ['Offline — fast hash','~10 Billion/sec',d.crack_times.offline_fast],
+      ['Offline — GPU cluster','~10 Trillion/sec',d.crack_times.offline_gpu],
+    ].map(([s,sp,t])=>{
+      const cls=(t==='Instantly'||t.includes('second')||t.includes('minute'))?'ct-i':t.includes('hour')||t.includes('day')?'ct-f':'ct-s';
+      return `<tr><td>${s}</td><td class="cspd">${sp}</td><td class="${cls}">${t}</td></tr>`;
+    }).join('');
+    toast('✓ Full audit complete','ok');
+  }catch{toast('✕ Backend offline — start app.py','err');}
+  finally{btn.disabled=false;btn.textContent='🔍 RUN FULL AUDIT — Breach Check + Crack Time Analysis';}
+}
+
+function toggleEye(){
+  const inp=document.getElementById('pw-in');const btn=document.getElementById('pw-eye');
+  inp.type=inp.type==='password'?'text':'password';
+  btn.textContent=inp.type==='password'?'👁 SHOW':'🙈 HIDE';
+}
+
+/* ════════════════════════════════════
+   SSL CHECKER
+════════════════════════════════════ */
+async function checkSSL(){
+  const domain=document.getElementById('ssl-in').value.trim();
+  if(!domain){toast('⚠ Enter a domain name','err');return;}
+  const btn=document.getElementById('ssl-btn');btn.disabled=true;btn.textContent='⏳ CHECKING...';
+  document.getElementById('ssl-res').style.display='none';
+  const t=startPbar('ssl-pb','ssl-fill','ssl-log',[
+    '> Resolving domain...','> Connecting to port 443...','> Performing TLS handshake...',
+    '> Fetching certificate...','> Analyzing cipher suite...','> Checking expiry date...','> Computing security grade...',
+  ],400);
+  try{
+    const r=await fetch(`${API}/ssl`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain})});
+    const d=await r.json();
+    if(d.error){errPbar('ssl-log',d.error,t);toast('✕ '+d.error,'err');return;}
+    donePbar('ssl-fill','ssl-log',`> Complete — Grade: ${d.grade} — ${d.days_left} days remaining`,t);
+    document.getElementById('ssl-res').style.display='block';
+    renderSSL(d);
+    hist.unshift({type:'ssl',time:new Date().toLocaleString(),target:d.domain,ip:d.domain,grade:d.grade,days:d.days_left});
+    saveHist();toast(`✓ SSL check done — Grade: ${d.grade}`,'ok');
+  }catch{
+    errPbar('ssl-log','Cannot connect to backend. Make sure app.py is running.',t);
+    toast('✕ Backend offline — start app.py','err');
+  }finally{btn.disabled=false;btn.textContent='🔍 CHECK SSL';}
+}
+
+function renderSSL(d){
+  const gc=GC[d.grade]||'#888';
+  const ge=document.getElementById('ssl-grade');
+  ge.textContent=d.grade;ge.style.color=gc;
+  ge.style.textShadow=`0 0 70px ${gc}88,0 0 140px ${gc}44`;
+  document.getElementById('ssl-glbl').textContent=GL[d.grade]||'';
+  const dEl=document.getElementById('ssl-days');
+  dEl.textContent=d.days_left;dEl.className='sval '+(d.days_left<15?'r':d.days_left<30?'y':'g');
+  document.getElementById('ssl-bits').textContent=d.cipher_bits||'—';
+  document.getElementById('ssl-sans').textContent=d.san.length;
+  const stEl=document.getElementById('ssl-stv');
+  stEl.textContent=d.status.toUpperCase();stEl.className='sval '+(d.status==='valid'?'g':'r');
+  document.getElementById('ssl-to').textContent=d.issued_to;
+  document.getElementById('ssl-by').textContent=d.issued_by;
+  document.getElementById('ssl-fr').textContent=d.valid_from;
+  document.getElementById('ssl-un').textContent=d.valid_until;
+  const tlEl=document.getElementById('ssl-tl');tlEl.textContent=d.tls_version;tlEl.className='ival '+(d.is_weak_tls?'r':'g');
+  const ciEl=document.getElementById('ssl-ci');ciEl.textContent=d.cipher;ciEl.className='ival '+(d.is_weak_cipher?'r':'');
+  document.getElementById('ssl-san').innerHTML=d.san.length
+    ?d.san.map(s=>`<span class="san-tag">${s}</span>`).join('')
+    :`<span style="color:var(--txt3);font-family:'JetBrains Mono',monospace;font-size:12px">No SAN entries found</span>`;
+  document.getElementById('ssl-iss').innerHTML=!d.issues.length
+    ?`<div style="color:var(--grn);font-family:'JetBrains Mono',monospace;font-size:13px;padding:14px 0;letter-spacing:1px;">✓ No security issues detected — certificate looks clean!</div>`
+    :d.issues.map(i=>`<div class="issue-row"><span class="rbadge ${i.risk==='high'?'rh':'rm'}">${i.risk.toUpperCase()}</span><span>${i.issue}</span></div>`).join('');
+}
+
+function clearSSL(){
+  document.getElementById('ssl-res').style.display='none';
+  document.getElementById('ssl-pb').style.display='none';
+  document.getElementById('ssl-in').value='';
+}
+
+/* ════════════════════════════════════
+   HISTORY
+════════════════════════════════════ */
+function saveHist(){if(hist.length>40)hist=hist.slice(0,40);localStorage.setItem('hs3',JSON.stringify(hist));}
+function renderHist(){
+  const el=document.getElementById('h-body');
+  if(!hist.length){el.innerHTML=`<div class="empty">// NO ACTIVITY RECORDED YET //<br><br>Run a port scan or SSL check<br>to populate this log.</div>`;return;}
+  el.innerHTML=hist.map((h,i)=>{
+    if(h.type==='port'){
+      return `<div class="hitem"><div class="hnum">#${hist.length-i}</div><span class="htype p">PORT</span><div class="htime">${h.time}</div><div class="hip">${h.ip}</div><div class="hstats">${h.total} open &nbsp;<span class="r">${h.high} high</span>&nbsp;<span class="y">${h.medium} med</span>&nbsp;${h.duration}s</div></div>`;
+    }
+    return `<div class="hitem"><div class="hnum">#${hist.length-i}</div><span class="htype s">SSL</span><div class="htime">${h.time}</div><div class="hip">${h.target}</div><div class="hstats">Grade: <span style="color:${GC[h.grade]||'#888'};font-weight:700">${h.grade}</span>&nbsp;${h.days} days left</div></div>`;
+  }).join('');
+}
+function clearHist(){if(!confirm('Clear all history?'))return;hist=[];localStorage.removeItem('hs3');renderHist();toast('✓ History cleared','ok');}
+
+/* ════════════════════════════════════
+   UTILS
+════════════════════════════════════ */
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+document.getElementById('ip-in').addEventListener('keydown',e=>{if(e.key==='Enter')startScan();});
+document.getElementById('ssl-in').addEventListener('keydown',e=>{if(e.key==='Enter')checkSSL();});
+document.getElementById('pw-in').addEventListener('keydown',e=>{if(e.key==='Enter')fullAudit();});
+</script>
+</body>
+</html>
