@@ -4,11 +4,11 @@ SSLGuard is a web-based security tool built using Python (Flask) and JavaScript 
 
 ## Features
 
-* 📜 SSL Certificate Analysis (expiry, issuer, validity)
-* 🔍 Detection of Weak Ciphers & Deprecated Protocols
-* 🔐 HTTPS Validation & Hostname Verification
-* ⚠️ Risk Scoring based on identified vulnerabilities
-* 📁 Downloadable Security Reports
+* SSL Certificate Analysis (expiry, issuer, validity)
+* Detection of Weak Ciphers & Deprecated Protocols
+* HTTPS Validation & Hostname Verification
+* Risk Scoring based on identified vulnerabilities
+* Downloadable Security Reports
 
 ##  Tech Stack
 
@@ -19,7 +19,7 @@ SSLGuard is a web-based security tool built using Python (Flask) and JavaScript 
 ## Installation & Setup
 
 1. Clone the repository:
-   git clone https://github.com/your-username/SSLGuard.git
+   git clone https://github.com/vipul87525/SSLGuard
 
 2. Navigate to the project folder:
    cd SSLGuard
@@ -49,4 +49,4 @@ SSLGuard is a web-based security tool built using Python (Flask) and JavaScript 
 
 
 Vipul Patil
-GitHub: https://github.com/your-username
+GitHub: https://github.com/vipul87525
